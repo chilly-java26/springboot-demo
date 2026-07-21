@@ -1,0 +1,10 @@
+server:
+  port: 8080
+
+book:
+  default-author: 未知作者
+  max-price: 100.0
+
+spring:
+  profiles:
+    active: dev
