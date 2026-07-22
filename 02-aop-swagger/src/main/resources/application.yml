@@ -10,6 +10,9 @@ book:
       author: "Craig Walls"
       price: 69.0
 
+jwt:
+  secret: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc4NDcxMTEwNCwiZXhwIjoxNzg0NzE0NzA0fQ.kYRS5Ri9pU4j_Qp4WJWvtOLwI1Ej_Pkgv5XwpYIVvcg"
+
 spring:
   profiles:
     active: dev
