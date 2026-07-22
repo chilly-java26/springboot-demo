@@ -1,0 +1,18 @@
+server:
+  port: 8080
+
+book:
+  default-author: 未知作者
+  max-price: 100.0
+  default-books:
+    - id: 1
+      name: "Spring Boot 实战"
+      author: "Craig Walls"
+      price: 69.0
+
+spring:
+  profiles:
+    active: dev
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher   # 解决 SpringBoot 2.6+ 与 Swagger 冲突
