@@ -9,6 +9,7 @@ import io.swagger.annotations.ApiParam;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import lombok.extern.slf4j.Slf4j;
+import com.github.pagehelper.PageInfo;
 
 import java.util.List;
 
@@ -55,5 +56,15 @@ public class BookController {
     public Result<String> delete(@PathVariable Integer id) {
         boolean success = bookService.delete(id);
         return success ? Result.success("删除成功") : Result.error("图书不存在");
+    }
+
+    @GetMapping("/page")
+    @ApiOperation("list books by page")
+    public Result<PageInfo<Book>> page(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "5") Integer pageSize) {
+        PageInfo<Book> pageInfo = bookService.getBooksByPage(pageNum, pageSize);
+        pageInfo.setNavigatePages(5);
+        return Result.success(pageInfo);
     }
 }

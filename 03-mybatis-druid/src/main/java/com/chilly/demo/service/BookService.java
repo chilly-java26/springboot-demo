@@ -1,76 +1,71 @@
 package com.chilly.demo.service;
 
-import com.chilly.demo.config.BookConfig;
+import com.chilly.demo.mapper.BookMapper;
 import com.chilly.demo.model.Book;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import javax.annotation.PostConstruct;
-import java.util.ArrayList;
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
+
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
+@Slf4j
 @Service
 public class BookService {
 
     @Autowired
-    private BookConfig bookConfig;  // 沿用项目一的配置注入
+    private BookMapper bookMapper;
 
-    // 内存数据库（线程安全）
-    private final Map<Integer, Book> bookStore = new ConcurrentHashMap<>();
-    private final AtomicInteger idGenerator = new AtomicInteger(1);
-
-    // 项目一原有的初始化数据逻辑，现在放到这里
-    @PostConstruct
-    public void init() {
-        // 从 BookConfig 读取默认书籍（如果项目一里配了的话），否则给个默认假数据
-        List<Book> defaultBooks = bookConfig.getDefaultBooks(); 
-        if (defaultBooks != null && !defaultBooks.isEmpty()) {
-            defaultBooks.forEach(book -> {
-                book.setId(idGenerator.getAndIncrement());
-                bookStore.put(book.getId(), book);
-            });
-        } else {
-            // 兜底假数据（保证启动有内容）
-            Book b1 = new Book(1, "Spring Boot 实战", "Craig Walls", 69.0);
-            Book b2 = new Book(2, "Java 并发编程实战", "Brian Goetz", 89.0);
-            bookStore.put(1, b1);
-            bookStore.put(2, b2);
-            idGenerator.set(3);
-        }
-    }
-
-    // 查询全部
+    // 1. 查询全部
+    @Transactional(readOnly = true)
     public List<Book> findAll() {
-        return new ArrayList<>(bookStore.values());
+        return bookMapper.selectAll();
     }
 
-    // 按 ID 查询
+    // 2. 按 ID 查询
+    @Transactional(readOnly = true)
     public Book findById(Integer id) {
-        return bookStore.get(id);
+        return bookMapper.selectById(id);
     }
 
-    // 新增（ID 由内部生成）
+    // 3. 新增（事务管理：失败则回滚）
+    @Transactional
     public Book add(Book book) {
-        Integer newId = idGenerator.getAndIncrement();
-        book.setId(newId);
-        bookStore.put(newId, book);
+        // 忽略客户传的id
+        book.setId(null);
+        bookMapper.insert(book);
+        // MyBatis 会把自增的 ID 回填
+        log.info("新增图书成功，生成 ID: {}", book.getId());
         return book;
     }
 
-    // 修改
+    // 4. 修改
+    @Transactional
     public Book update(Book book) {
-        if (!bookStore.containsKey(book.getId())) {
+        // 先检查是否存在（防止更新不存在的记录）
+        Book existing = bookMapper.selectById(book.getId());
+        if (existing == null) {
             return null;
         }
-        bookStore.put(book.getId(), book);
-        return book;
+        int rows = bookMapper.update(book);
+        return rows > 0 ? book : null;
     }
 
-    // 删除
+    // 5. 删除
+    @Transactional
     public boolean delete(Integer id) {
-        return bookStore.remove(id) != null;
+        return bookMapper.deleteById(id) > 0;
+    }
+
+    // 6. 分页查询
+    @Transactional(readOnly = true)
+    public PageInfo<Book> getBooksByPage(int pageNum, int pageSize) {
+        // PageHelper 必须紧跟在要分页的查询之前
+        PageHelper.startPage(pageNum, pageSize);
+        List<Book> list = bookMapper.selectAll();
+        return new PageInfo<>(list);
     }
 }

@@ -10,218 +10,194 @@
 用 AOP 记录请求日志
 用拦截器校验 Header 中的 Token
 
+项目三目标：在不破坏原有Controller接口的前提下，
+将数据源从内存Map替换为MySQL数据库，
+集成MyBatis作为ORM框架，
+使用Druid连接池管理数据库连接，
+支持事务管理，并提供分页查询能力。
+
 ======
 
 项目目录：
-01-springboot-app/
-├── pom.xml（修改：新增 Swagger + AOP 依赖）
-├── run.sh
-└── src
-    └── main
-        ├── java
-        │   └── com
-        │       └── chilly
-        │           └── demo
-        │               ├── DemoApplication.java（不变）
-        │               ├── common（新增包）
-        │               │   └── Result.java          # 统一返回结果封装
-        │               ├── controller
-        │               │   └── BookController.java  （重构为 RESTful）
-        │               ├── config（新增配置类）
-        │               │   ├── BookConfig.java      （原配置类，不变）
-        │               │   ├── SwaggerConfig.java   （新增）
-        │               │   └── WebMvcConfig.java    （新增，注册拦截器）
-        │               ├── interceptor（新增包）
-        │               │   └── TokenInterceptor.java
-        │               ├── aspect（新增包）
-        │               │   └── LogAspect.java
-        │               ├── model
-        │               │   └── Book.java（加 Swagger 注解）
-        │               └── service
-        │                   └── BookService.java（扩展为内存 CRUD）
-        └── resources
-            ├── application.yml（追加 spring.mvc.pathmatch 配置）
-            ├── application-dev.yml（不变）
-            ├── application-test.yml（不变）
-            └── logback-spring.xml（不变）
+项目三：图书管理·数据持久版（基于项目二改造）
+│
+├── 📁 src/main/java/com/chilly/demo/
+│   │
+│   ├── 📄 DemoApplication.java                    【不变】
+│   │
+│   ├── 📁 common/
+│   │   └── 📄 Result.java                         【不变】
+│   │
+│   ├── 📁 config/
+│   │   ├── 📄 SwaggerConfig.java                  【不变】
+│   │   ├── 📄 WebMvcConfig.java                   【不变】
+│   │   └── 📄 BookConfig.java                     【废弃】（改为数据库读取）
+│   │
+│   ├── 📁 controller/
+│   │   └── 📄 BookController.java                 【修改】（新增分页接口 /page）
+│   │
+│   ├── 📁 interceptor/
+│   │   └── 📄 TokenInterceptor.java               【不变】
+│   │
+│   ├── 📁 aspect/
+│   │   └── 📄 LogAspect.java                      【不变】
+│   │
+│   ├── 📁 service/
+│   │   └── 📄 BookService.java                    【大幅修改】（内存Map → Mapper）
+│   │
+│   ├── 📁 mapper/                                 【新增包】
+│   │   └── 📄 BookMapper.java                     【新增文件】
+│   │
+│   ├── 📁 util/
+│   │   └── 📄 JwtUtil.java                        【不变】
+│   │
+│   └── 📁 model/
+│       └── 📄 Book.java                           【不变】
+│
+├── 📁 src/main/resources/
+│   │
+│   ├── 📄 application.yml                         【大幅修改】（数据源 + MyBatis + PageHelper）
+│   ├── 📄 application-dev.yml                     【不变】
+│   ├── 📄 application-test.yml                    【不变】
+│   ├── 📄 logback-spring.xml                      【不变】
+│   │
+│   └── 📁 mapper/                                 【新增目录】
+│       └── 📄 BookMapper.xml                      【新增文件】
+│
+└── 📄 pom.xml                                     【修改】（新增 4 个依赖）
 
 修改步骤：
-1. 更新pom文件：新增swagger和aop依赖
-2. 添加common/Result.java：封装统一返回结果（泛型）
-3. 升级 BookService.java：从只读变为内存 CRUD 数据源
-4. 重构 BookController.java：RESTful + Swagger 注解
-5. 新增 SwaggerConfig.java：配置文档
-6. 新增 LogAspect.java：AOP 记录请求日志
-7. 新增 注册器 WebMvcConfig + 拦截器 TokenInterceptor
-8. 修改 application.yml：适配 Swagger + 保持原有配置
-9. RestTemplate 客户端测试：单元测试
+// 修改配置
+0. 环境准备（MySQL 建表）：scripts/init_db.sql
+1. 更新pom文件：新增mysql driver, mybatis, druid, pageHelper依赖
+2. 修改 application.yml（替换为数据库配置）：druid（数据源），mybatis，pageHelper
+// 添加数据库接口
+3. 新增 mapper/BookMapper.java：DAO 层接口
+4. 新建 BookMapper.xml：SQL 映射文件
+5. 改造 BookService.java：
+删除：Map、AtomicInteger、@PostConstruct 初始化。
+新增：注入 BookMapper，所有方法改为调用 Mapper。
+// 支持分页
+6. 增加分页查询：PageHelper（BookService, BookController）
 
 运行：
 run.sh
 
+获取token：
+scripts/jwt-gen.sh
+
 文档：
 http://localhost:8080/swagger-ui/index.html
 
-总结：
-项目二：图书管理·API 增强版
+知识点整理：
+项目三：图书管理·数据持久版
 │
-├── 模块一：Rest 接口开发（405-412）
+├── 模块一：MyBatis 整合（428-436）
 │   │
-│   ├── 知识点 405：Rest 接口开发（一）
-│   │   ├── RESTful 风格概念：用 HTTP 方法（GET/POST/PUT/DELETE）表示操作
-│   │   ├── URL 设计：名词复数，如 /api/books
-│   │   ├── @RestController：类上标记，返回 JSON
-│   │   ├── @RequestMapping("/api/books")：定义根路径
-│   │   ├── @GetMapping：查询全部列表
-│   │   ├── @PostMapping：新增数据
-│   │   ├── @PutMapping：修改数据
-│   │   ├── @DeleteMapping：删除数据
-│   │   └── @PathVariable：从 URL 路径中取值，如 /books/{id}
+│   ├── 知识点 428：逆向工程插件
+│   │   ├── 概念：根据数据库表自动生成实体类、Mapper 接口、XML 映射文件
+│   │   ├── 插件：mybatis-generator-maven-plugin
+│   │   ├── 配置文件：generatorConfig.xml（指定表名、包路径、目标目录）
+│   │   └── 项目三不强制使用（手写 Mapper 更利于学习）
 │   │
-│   ├── 知识点 406：@RequestBody 详解
-│   │   ├── 作用：将 HTTP 请求体中的 JSON 自动绑定为 Java 对象
-│   │   ├── 前提：请求头 Content-Type: application/json
-│   │   ├── 配合 @Valid 可做参数校验
-│   │   └── 用于 POST / PUT 方法接收前端数据
+│   ├── 知识点 429：扫描配置
+│   │   ├── @Mapper 注解：标记 Mapper 接口，让 Spring 扫描并生成代理对象
+│   │   ├── @MapperScan：在启动类或配置类上批量扫描包路径
+│   │   └── 项目三使用 @Mapper 注解（显式标记每个接口）
 │   │
-│   ├── 知识点 407：创建 RestTemplate（Java类方式）
-│   │   ├── 在启动类或配置类中用 @Bean 注册 RestTemplate
-│   │   ├── 注入方式：@Autowired 注入到测试类或 Service
-│   │   ├── 作用：Java 代码中发送 HTTP 请求调用他人接口
-│   │   └── 用 @SpringBootTest 可拉起完整容器测试
+│   ├── 知识点 430：别名配置
+│   │   ├── 作用：简化 XML 中的 resultType 写法（不用写全限定类名）
+│   │   ├── 配置方式：mybatis.type-aliases-package: com.chilly.demo.model
+│   │   └── 效果：XML 中可以直接写 Book，不用写 com.chilly.demo.model.Book
 │   │
-│   ├── 知识点 408：RestTemplate 请求 GET 服务
-│   │   ├── getForObject(url, 返回值类型.class)：直接拿响应体
-│   │   ├── getForEntity(url, 返回值类型.class)：拿响应体+响应头+状态码
-│   │   └── 示例：restTemplate.getForObject("http://localhost:8080/api/books", Result.class)
+│   ├── 知识点 431：打印 SQL
+│   │   ├── 作用：开发阶段查看 MyBatis 生成的 SQL 语句，便于调试
+│   │   ├── 配置方式：mybatis.configuration.log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+│   │   └── 生产环境建议关闭（或改为 logback 输出到文件）
 │   │
-│   ├── 知识点 409：RestTemplate 请求 POST 服务
-│   │   ├── postForObject(url, 请求体对象, 返回值类型.class)
-│   │   ├── postForEntity(...)：带状态码版本
-│   │   ├── 请求体需用 HttpEntity 包装，或直接传对象
-│   │   └── 示例：restTemplate.postForObject(url, new Book(...), Result.class)
+│   ├── 知识点 432：全局配置文件
+│   │   ├── 作用：MyBatis 核心配置，控制行为（缓存、执行器、自动映射等）
+│   │   ├── 配置内容：map-underscore-to-camel-case、cache-enabled、lazy-loading-enabled
+│   │   └── 在 SpringBoot 中通过 application.yml 的 mybatis.configuration 节点配置
 │   │
-│   ├── 知识点 410：RestTemplate 请求 DELETE 服务
-│   │   ├── delete(url, urlVariables)：无返回值
-│   │   └── 示例：restTemplate.delete("http://localhost:8080/api/books/{id}", 1)
+│   ├── 知识点 433：集成分页插件
+│   │   ├── 依赖：pagehelper-spring-boot-starter
+│   │   ├── 使用方式：PageHelper.startPage(pageNum, pageSize) 紧跟在查询前
+│   │   ├── 结果封装：PageInfo<Book>（包含 total、list、pages、navigatePages 等）
+│   │   └── 配置：pagehelper.helper-dialect=mysql（指定数据库方言）
 │   │
-│   ├── 知识点 411：使用 exchange 请求 DELETE 服务
-│   │   ├── exchange(url, HttpMethod, HttpEntity, 返回值类型.class)
-│   │   ├── 通用方法：可替代所有 GET/POST/PUT/DELETE
-│   │   ├── 灵活性：可自定义请求头和请求体
-│   │   └── 示例：restTemplate.exchange(url, HttpMethod.DELETE, entity, Result.class)
+│   ├── 知识点 434：整合事务
+│   │   ├── 注解：@Transactional（Spring 提供）
+│   │   ├── 作用：保证多个 SQL 操作要么全部成功，要么全部回滚
+│   │   ├── 使用位置：Service 层方法上（addBook、updateBook、deleteBook）
+│   │   └── 隔离级别/传播行为：默认即可，复杂场景可调
 │   │
-│   └── 知识点 412：RestTemplate 请求总结
-│       ├── getForObject / getForEntity → GET
-│       ├── postForObject / postForEntity → POST
-│       ├── put → PUT
-│       ├── delete → DELETE
-│       └── exchange → 万能方法，推荐使用
+│   ├── 知识点 435：整合 Druid 数据源
+│   │   ├── 依赖：druid-spring-boot-starter
+│   │   ├── 作用：连接池（管理数据库连接，提高性能）
+│   │   ├── 配置项：initial-size、min-idle、max-active、max-wait
+│   │   ├── 监控功能：内置 StatViewServlet（访问 /druid 查看连接池状态）
+│   │   └── 项目三配置：application.yml 中 spring.datasource.druid 节点
+│   │
+│   └── 知识点 436：综合练习（模糊查询和总结）
+│       ├── 模糊查询：使用 LIKE 语句 + #{keyword} 参数
+│       ├── 动态 SQL：MyBatis 提供 <if>、<where>、<foreach> 等标签
+│       └── 项目三目标：从内存 Map → 真实 MySQL 数据库
 │
-├── 模块二：使用 Java 类方式注入 Bean 到 IOC（413）
+├── 模块二：核心实现细节
 │   │
-│   └── 知识点 413：使用 Java 类方式注入 Bean 到 IOC
-│       ├── @Component + @ConfigurationProperties 将配置映射为 Bean
-│       ├── @Service / @Controller / @Repository 分层注解
-│       ├── @Bean 在 @Configuration 类中手动注册组件
-│       └── 与项目一的 BookConfig 配合，将 yml 配置注入为 Bean
+│   ├── BookMapper.java（DAO 层）
+│   │   ├── 接口定义：selectAll、selectById、insert、update、deleteById
+│   │   ├── @Mapper 标记接口
+│   │   └── @Param 用于多参数传递（XML 中通过 #{参数名} 引用）
+│   │
+│   ├── BookMapper.xml（SQL 映射文件）
+│   │   ├── namespace：必须与 Mapper 接口全限定名一致
+│   │   ├── resultMap：定义数据库字段 → Java 属性的映射
+│   │   ├── <select>：查询语句（id 对应方法名）
+│   │   ├── <insert>：插入语句（useGeneratedKeys="true" 回填自增 ID）
+│   │   ├── <update>：修改语句
+│   │   └── <delete>：删除语句
+│   │
+│   ├── BookService.java（业务层）
+│   │   ├── 删除：内存 Map + AtomicInteger
+│   │   ├── 新增：注入 BookMapper
+│   │   ├── 改造方法：getAllBooks → mapper.selectAll()
+│   │   ├── 改造方法：addBook → mapper.insert(book)（ID 由数据库自增）
+│   │   ├── 改造方法：updateBook → mapper.update(book)
+│   │   ├── 改造方法：deleteBook → mapper.deleteById(id)
+│   │   └── 新增方法：getBooksByPage（PageHelper + PageInfo 分页）
+│   │
+│   ├── application.yml（配置文件）
+│   │   ├── spring.datasource：Druid 连接池配置
+│   │   ├── mybatis：mapper-locations、type-aliases-package、configuration
+│   │   └── pagehelper：helper-dialect、reasonable、support-methods-arguments
+│   │
+│   └── BookController.java（控制器层）
+│       ├── 原有接口完全不变（GET /api/books、POST /api/books 等）
+│       └── 新增分页接口：GET /api/books/page?pageNum=1&pageSize=5
 │
-├── 模块三：Swagger 接口文档（414-416）
-│   │
-│   ├── 知识点 414：整合 Swagger - 环境搭建
-│   │   ├── 依赖引入：springfox-boot-starter
-│   │   ├── 编写 SwaggerConfig 配置类
-│   │   ├── @EnableSwagger2 开启 Swagger
-│   │   ├── Docket Bean：扫描指定包（com.chilly.demo.controller）
-│   │   ├── 文档类型：DocumentationType.SWAGGER_2
-│   │   ├── ApiInfo：标题、描述、版本、联系人
-│   │   ├── securitySchemes + securityContexts 配置 Authorization Header
-│   │   └── 访问路径：http://localhost:8080/swagger-ui/index.html
-│   │
-│   ├── 知识点 415：整合 Swagger - 注解详解
-│   │   ├── @Api(tags = "模块名")：标注 Controller 类
-│   │   ├── @ApiOperation(value = "接口描述")：标注方法
-│   │   ├── @ApiParam("参数说明")：标注参数
-│   │   ├── @ApiModel("实体描述")：标注实体类
-│   │   └── @ApiModelProperty("字段描述")：标注实体字段
-│   │
-│   └── 知识点 416：整合 Swagger - 注意事项
-│       ├── SpringBoot 2.6+ 必须配置 spring.mvc.pathmatch.matching-strategy=ant_path_matcher
-│       ├── 拦截器需放行 /swagger-ui/**、/v3/api-docs/** 等路径
-│       ├── 返回类型用泛型 Result<T> 时，Swagger 能正确识别 data 类型
-│       ├── ApiKey 的 name 必须与 SecurityReference 的引用名一致
-│       └── URL 参数 ?authorization=Authorization%20admin-token 可预填 Token
+├── 模块三：知识点覆盖总览（428-438）
+│   ├── 428：逆向工程插件 ✅（提及，未强制使用）
+│   ├── 429：扫描配置 ✅（@Mapper）
+│   ├── 430：别名配置 ✅（mybatis.type-aliases-package）
+│   ├── 431：打印 SQL ✅（log-impl: StdOutImpl）
+│   ├── 432：全局配置文件 ✅（map-underscore-to-camel-case）
+│   ├── 433：集成分页插件 ✅（PageHelper + PageInfo）
+│   ├── 434：整合事务 ✅（@Transactional）
+│   ├── 435：整合 Druid 数据源 ✅（Druid 连接池）
+│   └── 436：综合练习 ✅（模糊查询 + 总结）
+│       └── 合计：9 个知识点全部覆盖
 │
-├── 模块四：SpringBoot 整合 AOP（417）
-│   │
-│   └── 知识点 417：SpringBoot 整合 AOP
-│       ├── 依赖引入：spring-boot-starter-aop
-│       ├── 核心概念：
-│       │   ├── 切面（Aspect）：@Aspect + @Component 标记的类
-│       │   ├── 切点（Pointcut）：@Pointcut("execution(...)") 定义规则
-│       │   ├── 通知（Advice）：@Around / @Before / @After 标记方法
-│       │   └── 连接点（JoinPoint）：ProceedingJoinPoint 获取方法信息
-│       ├── 切点表达式：
-│       │   └── execution(public * com.chilly.demo.controller..*.*(..))
-│       │       ├── public：修饰符
-│       │       ├── * 返回值：任意类型
-│       │       ├── com.chilly.demo.controller..*：包及其子包
-│       │       ├── .*(..)：任意方法名、任意参数
-│       │       └── 含义：拦截 controller 包下所有公开方法
-│       ├── @Pointcut 方法体必须为空（只做名称标签）
-│       ├── @Around 环绕通知：
-│       │   ├── 入参：ProceedingJoinPoint
-│       │   ├── 执行前：打印请求 URL、方法、参数、IP
-│       │   ├── 执行：Object result = joinPoint.proceed()
-│       │   ├── 执行后：打印返回结果、耗时
-│       │   └── 最终 return result
-│       ├── 与 Controller 日志的关系：AOP 与 @Slf4j 互相独立，互不干扰
-│       └── 不加 spring-boot-starter-aop 则 @Aspect 不生效
-│
-├── 模块五：SpringBoot 整合拦截器（418）
-│   │
-│   └── 知识点 418：SpringBoot 整合拦截器
-│       ├── 实现步骤：
-│       │   ├── ① 写类实现 HandlerInterceptor 接口
-│       │   ├── ② 重写 preHandle() 方法（执行前拦截）
-│       │   ├── ③ 用 @Component 交给 Spring 管理
-│       │   └── ④ 在 WebMvcConfig 中 registry.addInterceptor() 注册
-│       ├── TokenInterceptor 校验逻辑：
-│       │   ├── request.getHeader("Authorization") 从请求头取 token
-│       │   ├── 与 VALID_TOKEN = "admin-token" 比较
-│       │   ├── 成功：return true 放行
-│       │   ├── 失败：手动设置状态码 401，返回 JSON 错误信息
-│       │   └── 失败必须 return false，阻止请求继续
-│       ├── WebMvcConfig 注册：
-│       │   ├── @Configuration + 实现 WebMvcConfigurer
-│       │   ├── @Autowired TokenInterceptor
-│       │   ├── addPathPatterns("/api/**")：拦截哪些路径
-│       │   └── excludePathPatterns(swagger静态资源)：放行哪些路径
-│       ├── 关键注意点：
-│       │   ├── 仅有 @Component 不会生效，必须注册
-│       │   ├── 多个拦截器按注册顺序执行
-│       │   └── 拦截器配置在 WebMvcConfigurer 中
-│       └── 拦截器与过滤器的区别：
-│           ├── 拦截器：Spring MVC 层（HandlerInterceptor）
-│           └── 过滤器：Servlet 容器层（Filter）
-│
-└── 模块六：Swagger + AOP + 拦截器使用总结（419）
-    │
-    └── 知识点 419：Swagger + AOP + 拦截器使用总结
-        ├── 分工定位：
-        │   ├── Swagger：生成接口文档，便于调试
-        │   ├── AOP：横切关注点，统一记录请求日志
-        │   └── 拦截器：前置鉴权，统一校验 Token
-        ├── 调用链路（一次请求的完整流程）：
-        │   ├── 客户端请求 → 拦截器 preHandle() 校验 Token
-        │   │   ├── 校验失败 → 返回 401，请求终止
-        │   │   └── 校验成功 → 继续
-        │   ├── → AOP @Around 前置日志
-        │   ├── → Controller 方法执行（@Slf4j 日志）
-        │   ├── → AOP @Around 后置日志
-        │   └── → 响应返回客户端
-        ├── 配置要点：
-        │   ├── 拦截器必须放行 Swagger 资源路径
-        │   ├── Swagger 安全配置与拦截器 Header 名称保持一致
-        │   └── AOP 切点表达式精准定位 controller 包
-        └── 三者互不干扰，各司其职
+└── 模块四：文件改动清单（对比项目二）
+    ├── 新增文件（2个）
+    │   ├── src/main/java/com/chilly/demo/mapper/BookMapper.java
+    │   └── src/main/resources/mapper/BookMapper.xml
+    ├── 修改文件（4个）
+    │   ├── pom.xml（新增 4 个依赖）
+    │   ├── BookService.java（内存 Map → Mapper）
+    │   ├── BookController.java（新增分页接口）
+    │   └── application.yml（数据源 + MyBatis + PageHelper）
+    └── 不变文件
+        ├── Controller、Interceptor、AOP、Swagger、JwtUtil 等
+        └── Book.java、Result.java、TokenInterceptor 等保持不变

@@ -11,7 +11,7 @@ book:
       price: 69.0
 
 jwt:
-  secret: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc4NDcxMTEwNCwiZXhwIjoxNzg0NzE0NzA0fQ.kYRS5Ri9pU4j_Qp4WJWvtOLwI1Ej_Pkgv5XwpYIVvcg"
+  secret: "your-256-bit-secret-key-for-book-management-api"
 
 spring:
   profiles:
@@ -19,3 +19,37 @@ spring:
   mvc:
     pathmatch:
       matching-strategy: ant_path_matcher   # 解决 SpringBoot 2.6+ 与 Swagger 冲突
+  # 数据源配置（Druid）
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/book_db?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf-8
+    username: root
+    password: root
+    druid:
+      # 连接池大小
+      initial-size: 5
+      min-idle: 5
+      max-active: 20
+      max-wait: 60000
+      # 监控统计
+      stat-view-servlet:
+        enabled: true
+        url-pattern: /druid/*
+        login-username: admin
+        login-password: admin
+
+# MyBatis 配置
+mybatis:
+  mapper-locations: classpath:mapper/*.xml       # xml 文件位置
+  type-aliases-package: com.chilly.demo.model    # 实体类包名（别名简化）
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  # 打印 SQL 日志
+    map-underscore-to-camel-case: true            # 下划线转驼峰（如 book_name -> bookName）
+    cache-enabled: false
+
+# PageHelper 分页配置
+pagehelper:
+  helper-dialect: mysql
+  reasonable: true   # 启用合理化：pageNum<=0 查第一页，pageNum>总页数查最后一页
+  support-methods-arguments: true
