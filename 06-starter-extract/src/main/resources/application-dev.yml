@@ -1,5 +1,0 @@
-server:
-  port: 8080
-
-book:
-  default-author: dev-张三
