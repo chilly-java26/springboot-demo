@@ -1,0 +1,69 @@
+server:
+  port: ${PORT:8080}   # 允许通过环境变量或命令行覆盖
+
+# ===== 开启 Debug 模式 =====
+debug: true
+
+book:
+  default-author: 未知作者
+  max-price: 100.0
+  default-books:
+    - id: 1
+      name: "Spring Boot 实战"
+      author: "Craig Walls"
+      price: 69.0
+
+jwt:
+  secret: "your-256-bit-secret-key-for-book-management-api"
+
+spring:
+  profiles:
+    active: dev
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher   # 解决 SpringBoot 2.6+ 与 Swagger 冲突
+  # 数据源配置（Druid）
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/book_db?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf-8
+    username: root
+    password: root
+    druid:
+      # 连接池大小
+      initial-size: 5
+      min-idle: 5
+      max-active: 20
+      max-wait: 60000
+      # 监控统计
+      stat-view-servlet:
+        enabled: true
+        url-pattern: /druid/*
+        login-username: admin
+        login-password: admin
+  freemarker:
+    suffix: .ftl          # 模板文件后缀
+    charset: UTF-8
+    content-type: text/html
+    template-loader-path: classpath:/templates/   # 模板存放目录
+    cache: false           # 开发环境关闭缓存，便于实时看到修改
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    serialization:
+      write-dates-as-timestamps: false
+
+# MyBatis 配置
+mybatis:
+  mapper-locations: classpath:mapper/*.xml       # xml 文件位置
+  type-aliases-package: com.chilly.demo.model    # 实体类包名（别名简化）
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  # 打印 SQL 日志
+    map-underscore-to-camel-case: true            # 下划线转驼峰（如 book_name -> bookName）
+    cache-enabled: false
+
+# PageHelper 分页配置
+pagehelper:
+  helper-dialect: mysql
+  reasonable: true   # 启用合理化：pageNum<=0 查第一页，pageNum>总页数查最后一页
+  support-methods-arguments: true

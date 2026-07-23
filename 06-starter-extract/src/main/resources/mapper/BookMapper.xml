@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.chilly.demo.mapper.BookMapper">
+
+    <!-- 结果映射（由于开启了驼峰映射，这里可以省略，但写上更清晰） -->
+    <resultMap id="BaseResultMap" type="com.chilly.demo.model.Book">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="author" property="author"/>
+        <result column="price" property="price"/>
+    </resultMap>
+
+    <!-- 查询全部 -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT id, name, author, price FROM book ORDER BY id
+    </select>
+
+    <!-- 按 ID 查询 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT id, name, author, price FROM book WHERE id = #{id}
+    </select>
+
+    <!-- 新增（useGeneratedKeys 回填自增 ID） -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO book (name, author, price)
+        VALUES (#{name}, #{author}, #{price})
+    </insert>
+
+    <!-- 修改 -->
+    <update id="update">
+        UPDATE book
+        SET name = #{name}, author = #{author}, price = #{price}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除 -->
+    <delete id="deleteById">
+        DELETE FROM book WHERE id = #{id}
+    </delete>
+
+</mapper>
