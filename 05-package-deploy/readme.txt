@@ -86,7 +86,32 @@
     └── 批量启动 8081/8082/8083 三个实例
 
 修改步骤：
+第一步：修改pom打War包，maven war plugin
+添加 Tomcat 依赖
+添加ServletInitializer.java
 
+打包：
+mvn clean package
+
+部署：
+cp target/springboot-demo-1.0.war ~/Tomcat/apache-tomcat-9.0.120/webapps 
+~/Tomcat/apache-tomcat-9.0.120/bin/startup.sh
+
+访问：
+http://localhost:8080/springboot-demo-1.0/index
+localStorage.setItem('token', 'Bearer <你的JWT>')
+
+多实例部署
+修改application.yml，不写死端口
+export JAVA_HOME=$(/usr/libexec/java_home -v 1.8)
+mvn clean package
+java -jar target/springboot-demo.war --server.port=8081 &
+java -jar target/springboot-demo.war --server.port=8082 &
+java -jar target/springboot-demo.war --server.port=8083 &
+
+vi /opt/homebrew/etc/nginx/nginx.conf #编写 nginx.conf 配置负载均衡
+nginx -s reload
+测试（多次刷新，负载均衡）：http://localhost
 
 运行：
 run.sh
@@ -100,4 +125,70 @@ http://localhost:8080/custom-servlet
 文档：
 http://localhost:8080/swagger-ui/index.html
 
-知识点整理：
+自动配置原理（约定优于配置）：
+一句话：
+Spring Boot 启动时，自动扫描 classpath 中的依赖，
+根据条件决定是否创建对应的 Bean，
+让你不用写任何配置就能使用各种功能。
+
+1）SpringBoot 的自动配置原理是基于 
+@EnableAutoConfiguration 和 SpringFactoriesLoader 实现的。
+
+2）启动时，SpringBoot 会读取 Classpath 下所有 META-INF/spring.factories 文件中
+配置的 EnableAutoConfiguration 键值，加载成百上千个 xxxAutoConfiguration 配置类。
+
+这些配置类用 @Conditional 系列注解（如 @ConditionalOnClass、@ConditionalOnMissingBean）
+来判断当前环境是否满足条件，只有满足条件时才会创建对应的 Bean 注入容器。
+
+3）这样开发者只需要“引入 Starter 依赖”，框架就能“自动装配好必要的组件”，无需手动配置 XML。
+
+springboot-demo-1.0.war
+└── WEB-INF/
+    └── lib/
+        └── spring-boot-autoconfigure-2.7.0.jar
+            └── META-INF/
+                └── spring.factories
+                
+┌─────────────────────────────────────────────────────┐
+│                   启动 Spring Boot                    │
+└─────────────────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────┐
+│      @EnableAutoConfiguration 开启自动配置           │
+└─────────────────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────┐
+│      加载 META-INF/spring.factories                 │
+│      获取所有 EnableAutoConfiguration 列表           │
+└─────────────────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────┐
+│      遍历每个自动配置类                              │
+│      检查 @Conditional 条件                         │
+│                                                    │
+│      有 Redis 依赖？ → 是 → RedisAutoConfiguration  │
+│      有 DataSource？  → 是 → DataSourceAutoConfig   │
+│      有 Couchbase？   → 否 → 跳过 ✅               │
+└─────────────────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────┐
+│      条件满足 → 创建 Bean                           │
+│      条件不满足 → 跳过                              │
+└─────────────────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────┐
+│              IOC 容器准备好了 ✅                     │
+└─────────────────────────────────────────────────────┘
+
+Maven scopes:
+compile（默认）："所有阶段都需要"，并且会打进最终包。
+provided：编译和测试时需要，但"运行时由容器提供"，不会打进包。
+runtime：编译时不需要，但"测试和运行时需要"，会打进包（JDBC 驱动）。
+test：只在"编译和运行测试时需要"，不会打进最终包。
+system：需要"本地 JAR"，已废弃，不推荐使用。
+import：只用于 <dependencyManagement> 导入 BOM 版本管理，"不引入实际依赖"。

@@ -22,6 +22,30 @@ public class JwtUtil {
     }
 
     /**
+     * 生成 JWT Token（不带 "Bearer " 前缀）
+     * @param subject 用户名或其他标识
+     * @param expireSeconds 过期秒数（如 3600 为 1 小时）
+     * @return JWT 字符串
+     */
+    public String generateToken(String subject, long expireSeconds) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + expireSeconds * 1000);
+        return Jwts.builder()
+                .subject(subject)
+                .issuedAt(now)
+                .expiration(expiryDate)
+                .signWith(getSigningKey())
+                .compact();
+    }
+
+    /**
+     * 生成 JWT Token，默认过期时间 1 小时
+     */
+    public String generateToken(String subject) {
+        return generateToken(subject, 3600);
+    }
+
+    /**
      * 验证 JWT 并返回 Claims（包含用户信息等）
      * @param token JWT 字符串
      * @return Claims 对象（可从中获取 subject、自定义字段等）
